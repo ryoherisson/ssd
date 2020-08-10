@@ -2,6 +2,7 @@
 Original author: YutaroOgawa
 https://github.com/YutaroOgawa/pytorch_advanced/blob/master/2_objectdetection/utils/ssd_model.py
 """
+import torch
 
 def decode(loc, dbox_list):
     """Decode predictions : DBox -> BBox
