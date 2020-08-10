@@ -2,6 +2,7 @@
 Original author: YutaroOgawa
 https://github.com/YutaroOgawa/pytorch_advanced/blob/master/2_objectdetection/utils/ssd_model.py
 """
+import torch
 
 def nm_suppression(boxes, scores, overlap=0.45, top_k=200):
     """Non-Maximum Supression

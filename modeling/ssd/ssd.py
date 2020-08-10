@@ -12,14 +12,12 @@ from modeling.ssd.modules.extras import make_extras
 from modeling.ssd.modules.l2norm import L2Norm
 from modeling.ssd.modules.loc_conf import make_loc_conf
 from modeling.ssd.modules.dbox import DBox
-from modeling.ssd.detect import Detect
 
 
 class SSD(nn.Module):
-    def __init__(self, phase, **cfg):
+    def __init__(self, **cfg):
         super(SSD, self).__init__()
 
-        self.phase = phase
         self.n_classes = cfg['n_classes']
 
         self.vgg = make_vgg()
@@ -33,15 +31,12 @@ class SSD(nn.Module):
         dbox = DBox(**cfg)
         self.dbox_list = dbox.make_dbox_list()
 
-        if phase == 'inference':
-            self.detect = Detect()
-
     def forward(self, x):
         sources = list() # input for loc and conf
         loc = list() # output for loc
         conf = list() # output for conf
 
-        # calculate until vgg       conv4_3
+        # calculate until vgg conv4_3
         for k in range(23):
             x = self.vgg[k](x)
 
@@ -80,14 +75,8 @@ class SSD(nn.Module):
 
         output = (loc, conf, self.dbox_list)
 
-        if self.phase == "test":
-            # Detect forward
-            # torch.Size([batch_num, 21, 200, 5])
-            return self.detect(output[0], output[1], output[2])
-
-        else: 
-            return output
-            # (loc, conf, dbox_list)
+        return output
+        # output: (loc, conf, dbox_list)
 
 if __name__ == "__main__":
     ssd_cfg = {

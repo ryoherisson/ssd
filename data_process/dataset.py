@@ -20,7 +20,7 @@ class Anno_xml2list(object):
         self.classes = classes
     
     def __call__(self, xml_path, width, height):
-        """[summary]
+        """Annotation transform
 
         Parameters
         ----------
