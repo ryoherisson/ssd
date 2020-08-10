@@ -22,7 +22,8 @@ from data_process.dataset import VOCDataset
 from data_process.dataset import od_collate_fn
 from modeling.ssd.ssd import SSD
 from modeling.detector import ObjectDetection
-from criterions.loss import MultiBoxLoss
+from modeling.criterions.loss import MultiBoxLoss
+from modeling.metrics.metrics import Metrics
 
 logger = getLogger(__name__)
 
@@ -62,7 +63,7 @@ def main():
     data_root = configs['data_root']
     logger.info(f'==> dataset path: {data_root}\n')
 
-    train_img_list, train_annot_list, test_img_list, test_annot_list = make_datapath_list(rootpath=data_root, train_data='train.txt', test_data='test.txt')
+    train_img_list, train_annot_list, test_img_list, test_annot_list = make_datapath_list(rootpath=data_root, train_data=configs['train_txt'], test_data=configs['test_txt'])
 
     train_transform = DataTransform(img_size=configs['img_size'], color_mean=configs['color_mean'], mode='train')
     test_transform = DataTransform(img_size=configs['img_size'], color_mean=configs['color_mean'], mode='test')
@@ -89,7 +90,7 @@ def main():
         'aspect_ratios': configs['aspect_ratios'],  # aspect ratios
     }
 
-    network = SSD(phase='train', **ssd_cfg)
+    network = SSD(**ssd_cfg)
     network = network.to(device)
     criterion = MultiBoxLoss(jaccard_thresh=configs['jaccord_thresh'], neg_pos=configs['neg_pos'], device=device)
     optimizer = optim.Adam(network.parameters(), lr=configs['lr'])
@@ -129,6 +130,7 @@ def main():
         logger.info('==> Building model...\n')
         start_epoch = 0
 
+    # logging
     logger.info('model summary: ')
     logger.info(summary(network, input_size=(configs['n_channels'], configs['img_size'], configs['img_size'])))
 
@@ -136,7 +138,19 @@ def main():
         network = nn.DataParallel(network)
 
     ### Metrics ###
-    # metrics = Metrics()
+    metrics_cfg = {
+        'n_classes': configs['n_classes'],
+        'classes': configs['classes'],
+        'img_size': configs['img_size'],
+        'writer': writer,
+        'metrics_dir': paths.metrics_dir,
+        'imgs_dir': paths.img_outdir,
+        'conf_thresh': configs['conf_thresh'],
+        'top_k': configs['top_k'],
+        'nms_thresh': configs['nms_thresh']
+    }
+    
+    metrics = Metrics(**metrics_cfg)
 
     ### Train or Inference ###
     kwargs = {
@@ -145,7 +159,7 @@ def main():
         'optimizer': optimizer,
         'criterion': criterion,
         'data_loaders': (train_loader, test_loader),
-        # 'metrics': metrics,
+        'metrics': metrics,
         'writer': writer,
         'save_ckpt_interval': configs['save_ckpt_interval'],
         'ckpt_dir': paths.ckpt_dir,
