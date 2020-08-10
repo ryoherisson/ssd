@@ -17,7 +17,7 @@ class ObjectDetection(object):
         self.optimizer = kwargs['optimizer']
         self.criterion = kwargs['criterion']
         self.train_loader, self.test_loader = kwargs['data_loaders']
-        # self.metrics = kwargs['metrics']
+        self.metrics = kwargs['metrics']
         self.writer = kwargs['writer']
         self.save_ckpt_interval = kwargs['save_ckpt_interval']
         self.ckpt_dir = kwargs['ckpt_dir']
@@ -39,11 +39,11 @@ class ObjectDetection(object):
             with tqdm(self.train_loader, ncols=100) as pbar:
                 for idx, (inputs, targets, heights_, widths_, fnames_) in enumerate(pbar):
                     inputs = inputs.to(self.device)
-                    targets = [annot.to(self.device) for annot in targets]
+                    targets_device = [annot.to(self.device) for annot in targets]
 
                     outputs = self.network(inputs)
 
-                    loss_l, loss_c = self.criterion(outputs, targets)
+                    loss_l, loss_c = self.criterion(outputs, targets_device)
                     loss = loss_l + loss_c
 
                     loss.backward()
@@ -57,6 +57,14 @@ class ObjectDetection(object):
 
                     n_total += len(targets)
 
+                    ### metrics update
+                    # self.metrics.update(loc=outputs[0].cpu().detach().clone(),
+                    #                     conf=outputs[1].cpu().detach().clone(),
+                    #                     dbox_list=outputs[2].cpu().detach().clone(),
+                    #                     targets=targets,
+                    #                     loss=train_loss / n_total,
+                    #                     fnames=fnames_)
+
                     ### logging train loss and accuracy
                     pbar.set_postfix(OrderedDict(
                         epoch="{:>10}".format(epoch),
@@ -65,6 +73,9 @@ class ObjectDetection(object):
             if epoch % self.save_ckpt_interval == 0:
                 logger.info('saving checkpoing...')
                 self._save_ckpt(epoch, train_loss/(idx+1))
+
+            # self.metrics.calc_metrics(epoch, mode='train')
+            # self.metrics.initialize()
 
             ### test
             logger.info('### test:')
@@ -81,11 +92,11 @@ class ObjectDetection(object):
                 for idx, (inputs, targets, heights_, widths_, fnames_) in enumerate(pbar):
 
                     inputs = inputs.to(self.device)
-                    targets = [annot.to(self.device) for annot in targets]
+                    targets_device = [annot.to(self.device) for annot in targets]
 
                     outputs = self.network(inputs)
 
-                    loss_l, loss_c = self.criterion(outputs, targets)
+                    loss_l, loss_c = self.criterion(outputs, targets_device)
                     loss = loss_l + loss_c
 
                     self.optimizer.zero_grad()
@@ -94,10 +105,21 @@ class ObjectDetection(object):
 
                     n_total += len(targets)
 
+                    ### metrics update
+                    self.metrics.update(loc=outputs[0].cpu().detach().clone(),
+                                        conf=outputs[1].cpu().detach().clone(),
+                                        dbox_list=outputs[2].cpu().detach().clone(),
+                                        targets=targets,
+                                        loss=test_loss / n_total,
+                                        fnames=fnames_)
+
                     ### logging test loss and accuracy
                     pbar.set_postfix(OrderedDict(
                         epoch="{:>10}".format(epoch),
                         loss="{:.4f}".format(test_loss / n_total)))
+
+            self.metrics.calc_metrics(epoch, mode='test')
+            self.metrics.initialize()
 
 
     def _save_ckpt(self, epoch, loss, mode=None, zfill=4):
