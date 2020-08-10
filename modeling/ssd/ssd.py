@@ -36,7 +36,7 @@ class SSD(nn.Module):
         loc = list() # output for loc
         conf = list() # output for conf
 
-        # calculate until vgg       conv4_3
+        # calculate until vgg conv4_3
         for k in range(23):
             x = self.vgg[k](x)
 
