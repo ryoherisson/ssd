@@ -90,8 +90,6 @@ class Metrics(object):
                 self.intersection[label] += torch.sum((target_tensor == label) & (output_tensor == label)).long()
                 self.union[label] += torch.sum((target_tensor == label) | (output_tensor == label)).long()
 
-        import pdb; pdb.set_trace()
-
     def calc_metrics(self, epoch, mode='train'):
         self.iou()
         self.logging(epoch, mode)
