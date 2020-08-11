@@ -3,9 +3,11 @@ from tqdm import tqdm
 from logging import getLogger
 from collections import OrderedDict
 
+import numpy as np
+
 import torch
 import torch.nn as nn
-import torchvision
+from torchvision import transforms
 
 logger = getLogger(__name__)
 
@@ -130,6 +132,7 @@ class ObjectDetection(object):
             preds = self.metrics.calc_metrics(epoch, mode='test') 
             test_mean_iou = self.metrics.mean_iou
 
+            self._show_imgs(img_paths[:2], preds[:2], self.img_size, epoch, prefix='val')
             if inference:
                 self._save_images(img_paths, preds, height_list, width_list)
 
@@ -157,7 +160,7 @@ class ObjectDetection(object):
             'loss': loss,
         }, ckpt_path)
 
-    def _show_imgs(self, img_paths, preds, img_size, prefix='train'):
+    def _show_imgs(self, img_paths, preds, img_size, epoch, prefix='train'):
         """Show result image on Tensorboard
 
         Parameters
@@ -171,10 +174,12 @@ class ObjectDetection(object):
         prefix : str, optional
             'train' or 'test', by default 'train'
         """
-        
 
-
-        pass
+        for i, img_path in enumerate(img_paths):
+            pred = preds[i][1:]
+            annotated_img = self.box_vis.draw_box(img_path, pred, img_size, img_size)
+            annotated_img = transforms.functional.to_tensor(annotated_img)
+            self.writer.add_image(f'{prefix}/results_{i}', annotated_img, epoch)
 
     def _save_images(self, img_paths, preds, height_list, width_list):
         """Save Image
@@ -197,7 +202,7 @@ class ObjectDetection(object):
             height = height_list[i]
             width = width_list[i]
 
-            annotated_img = self.box_vis.draw_box(img_path, pred, height, width)
+            annotated_img = self.box_vis.draw_box(img_path, pred, width, height)
 
             outpath = self.img_outdir / img_path.name
             self.box_vis.save_img(annotated_img, outpath)

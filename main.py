@@ -159,7 +159,7 @@ def main():
     metrics = Metrics(**metrics_cfg)
 
     ### Visualize Results ###
-    box_vis = BoxVis(configs['confidence_level'], configs['classes'], configs['label_color_map'])
+    box_vis = BoxVis(configs['confidence_level'], configs['classes'], configs['label_color_map'], configs['font_path'])
 
     ### Train or Inference ###
     kwargs = {
