@@ -40,7 +40,7 @@ class ObjectDetection(object):
             train_loss = 0
 
             with tqdm(self.train_loader, ncols=100) as pbar:
-                for idx, (inputs, targets, heights_, widths_, img_paths_) in enumerate(pbar):
+                for idx, (inputs, targets, heights_, widths_, img_paths) in enumerate(pbar):
                     inputs = inputs.to(self.device)
                     targets_device = [annot.to(self.device) for annot in targets]
 
@@ -74,7 +74,7 @@ class ObjectDetection(object):
                 self._save_ckpt(epoch, train_loss/(idx+1))
 
             # logger.info('\ncalculate metrics...')
-            self.metrics.calc_metrics(epoch, mode='train')
+            preds = self.metrics.calc_metrics(epoch, mode='train')
             self.metrics.initialize()
 
             ### show images on tensorboard
