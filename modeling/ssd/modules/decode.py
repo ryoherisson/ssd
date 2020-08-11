@@ -4,7 +4,7 @@ https://github.com/YutaroOgawa/pytorch_advanced/blob/master/2_objectdetection/ut
 """
 import torch
 
-def decode(loc, dbox_list):
+def decode(loc, dbox_list, variances):
     """Decode predictions : DBox -> BBox
 
     Parameters
@@ -13,6 +13,8 @@ def decode(loc, dbox_list):
         location predictions for loc layer
     dbox_list : torch.Tensor with size (8732, 4)
         DBox location
+    variances : list
+        list of variance
 
     Returns
     -------
@@ -21,9 +23,10 @@ def decode(loc, dbox_list):
     """
 
     #TODO: cx = cx_d + cx_d * 0.1 * Δcxなので、計算違うのでは？
+
     boxes = torch.cat((
-        dbox_list[:, :2] + loc[:, :2] * 0.1 * dbox_list[:, 2:], 
-        dbox_list[:, 2:] * torch.exp(loc[:, 2:] * 0.2)), dim=1)
+        dbox_list[:, :2] + loc[:, :2] * variances[0] * dbox_list[:, 2:], 
+        dbox_list[:, 2:] * torch.exp(loc[:, 2:] * variances[1])), dim=1)
 
     #TODO 以下が正しい?
     # boxes = torch.cat((
@@ -31,6 +34,6 @@ def decode(loc, dbox_list):
     #     dbox_list[:, 2:] * torch.exp(loc[:, 2:] * 0.2)), dim=1)
 
     boxes[:, :2] -= boxes[:, 2:] / 2 # (xcenter, ycenter, width, height) -> (xmin, ymin, width, height)
-    boxes[:, 2:] -= boxes[:, :2] / 2 # (xmin, ymin, width, height) -> (xmin, ymin, xmax, ymax)
+    boxes[:, 2:] += boxes[:, :2]     # (xmin, ymin, width, height) -> (xmin, ymin, xmax, ymax)
 
     return boxes

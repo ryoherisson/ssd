@@ -16,14 +16,15 @@ from torchsummary import summary
 
 from utils.path_process import Paths
 from utils.setup_logger import setup_logger
+from utils.vis_img import BoxVis
 from data_process.data_path_process import make_datapath_list
 from data_process.dataset import Anno_xml2list, DataTransform
 from data_process.dataset import VOCDataset
 from data_process.dataset import od_collate_fn
 from modeling.ssd.ssd import SSD
-from modeling.detector import ObjectDetection
 from modeling.criterions.loss import MultiBoxLoss
 from modeling.metrics.metrics import Metrics
+from modeling.detector import ObjectDetection
 
 logger = getLogger(__name__)
 
@@ -88,12 +89,23 @@ def main():
         'min_sizes': configs['min_sizes'],  # size of dbox
         'max_sizes': configs['max_sizes'],  # size of dbox
         'aspect_ratios': configs['aspect_ratios'],  # aspect ratios
+        'variances': configs['variances'], # variances for decode
+        'conf_thresh': configs['conf_thresh'],
+        'top_k': configs['top_k'],
+        'nms_thresh': configs['nms_thresh'],
+        'device': device,
     }
 
     network = SSD(**ssd_cfg)
     network = network.to(device)
     criterion = MultiBoxLoss(jaccard_thresh=configs['jaccord_thresh'], neg_pos=configs['neg_pos'], device=device)
     optimizer = optim.Adam(network.parameters(), lr=configs['lr'])
+
+    def weights_init(m):
+        if isinstance(m, nn.Conv2d):
+            init.kaiming_normal_(m.weight.data)
+            if m.bias is not None:
+                nn.init.constant_(m.bias, 0.0)
 
     if configs['pretrained']:
         # Load pretrained model
@@ -103,12 +115,6 @@ def main():
         
         vgg_weights = torch.load(configs['pretrained'])
         network.vgg.load_state_dict(vgg_weights)
-
-    def weights_init(m):
-        if isinstance(m, nn.Conv2d):
-            init.kaiming_normal_(m.weight.data)
-            if m.bias is not None:
-                nn.init.constant_(m.bias, 0.0)
 
     network.extras.apply(weights_init)
     network.loc.apply(weights_init)
@@ -122,10 +128,12 @@ def main():
             raise ValueError('No checkpoint found !')
 
         ckpt = torch.load(configs['resume'])
-        network.load_state_dict(ckpt['model_state_dict'])
-        optimizer.load_state_dict(ckpt['optimizer_state_dict'])
-        start_epoch = ckpt['epoch']
-        loss = ckpt['loss']
+        network.load_state_dict(ckpt)
+        start_epoch = 0
+        # network.load_state_dict(ckpt['model_state_dict'])
+        # optimizer.load_state_dict(ckpt['optimizer_state_dict'])
+        # start_epoch = ckpt['epoch']
+        # loss = ckpt['loss']
     else:
         logger.info('==> Building model...\n')
         start_epoch = 0
@@ -142,15 +150,16 @@ def main():
         'n_classes': configs['n_classes'],
         'classes': configs['classes'],
         'img_size': configs['img_size'],
+        'confidence_level': configs['confidence_level'],
         'writer': writer,
         'metrics_dir': paths.metrics_dir,
         'imgs_dir': paths.img_outdir,
-        'conf_thresh': configs['conf_thresh'],
-        'top_k': configs['top_k'],
-        'nms_thresh': configs['nms_thresh']
     }
     
     metrics = Metrics(**metrics_cfg)
+
+    ### Visualize Results ###
+    box_vis = BoxVis(configs['confidence_level'], configs['classes'], configs['label_color_map'], configs['font_path'])
 
     ### Train or Inference ###
     kwargs = {
@@ -160,6 +169,8 @@ def main():
         'criterion': criterion,
         'data_loaders': (train_loader, test_loader),
         'metrics': metrics,
+        'box_vis': box_vis,
+        'img_size': configs['img_size'],
         'writer': writer,
         'save_ckpt_interval': configs['save_ckpt_interval'],
         'ckpt_dir': paths.ckpt_dir,

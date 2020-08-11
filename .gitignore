@@ -4,3 +4,5 @@ logs
 *.png
 *.xml
 dataset
+weights
+font
