@@ -1,5 +1,9 @@
 # SSD: Single Shot MultiBox Object Detecto in pytorch
+<<<<<<< HEAD
 This is a pytorch implementation of  Single Shot MultiBox Object Detector.
+=======
+This is a pytorch implementation of  Single Shot MultiBox Object Detecto.  
+>>>>>>> 5cae7625fe74961da9ac7588a0f102d94fd28282
 Cifar10 is available for the dataset by default.
 You can also use your own dataset.
 

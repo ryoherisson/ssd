@@ -60,7 +60,7 @@ class Detect(nn.Module):
 
                 # 3, Non-Maximum Suppression
                 ids, count = nm_suppression(
-                    boxes, scores, self.nms_thresh, self.top_k)
+                    boxes.detach(), scores.detach(), self.nms_thresh, self.top_k)
                 # ids: index after nm_suppression
                 # count: num of bbox after nm_suppression
                 
