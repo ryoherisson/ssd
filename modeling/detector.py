@@ -34,7 +34,6 @@ class ObjectDetection(object):
             self.network.train()
 
             train_loss = 0
-            n_total = 0
 
             with tqdm(self.train_loader, ncols=100) as pbar:
                 for idx, (inputs, targets, heights_, widths_, fnames_) in enumerate(pbar):
@@ -55,37 +54,41 @@ class ObjectDetection(object):
 
                     train_loss += loss.item()
 
-                    n_total += len(targets)
-
                     ### metrics update
                     # self.metrics.update(loc=outputs[0].cpu().detach().clone(),
                     #                     conf=outputs[1].cpu().detach().clone(),
                     #                     dbox_list=outputs[2].cpu().detach().clone(),
                     #                     targets=targets,
-                    #                     loss=train_loss / n_total,
+                    #                     loss=train_loss,
                     #                     fnames=fnames_)
 
                     ### logging train loss and accuracy
                     pbar.set_postfix(OrderedDict(
                         epoch="{:>10}".format(epoch),
-                        loss="{:.4f}".format(train_loss / n_total)))
+                        loss="{:.4f}".format(train_loss)))
 
             if epoch % self.save_ckpt_interval == 0:
-                logger.info('saving checkpoing...')
+                logger.info('\nsaving checkpoint...')
                 self._save_ckpt(epoch, train_loss/(idx+1))
 
+            # logger.info('\ncalculate metrics...')
             # self.metrics.calc_metrics(epoch, mode='train')
             # self.metrics.initialize()
 
             ### test
-            logger.info('### test:')
-            self.test(epoch)
+            logger.info('\n### test:')
+            test_mean_iou = self.test(epoch)
+
+            if test_mean_iou > best_test_iou:
+                logger.info(f'\nsaving best checkpoint (epoch: {epoch})...')
+                best_test_iou = test_mean_iou
+                self._save_ckpt(epoch, train_loss/(idx+1), mode='best')
+
 
     def test(self, epoch, inference=False):
         self.network.eval()
 
         test_loss = 0
-        n_total = 0
 
         with torch.no_grad():
             with tqdm(self.test_loader, ncols=100) as pbar:
@@ -94,7 +97,7 @@ class ObjectDetection(object):
                     inputs = inputs.to(self.device)
                     targets_device = [annot.to(self.device) for annot in targets]
 
-                    outputs = self.network(inputs)
+                    outputs, detect_outputs = self.network(inputs, phase='test')
 
                     loss_l, loss_c = self.criterion(outputs, targets_device)
                     loss = loss_l + loss_c
@@ -103,23 +106,28 @@ class ObjectDetection(object):
 
                     test_loss += loss.item()
 
-                    n_total += len(targets)
-
                     ### metrics update
-                    self.metrics.update(loc=outputs[0].cpu().detach().clone(),
-                                        conf=outputs[1].cpu().detach().clone(),
-                                        dbox_list=outputs[2].cpu().detach().clone(),
+                    self.metrics.update(preds=detect_outputs,
                                         targets=targets,
-                                        loss=test_loss / n_total,
+                                        loss=test_loss,
                                         fnames=fnames_)
 
                     ### logging test loss and accuracy
                     pbar.set_postfix(OrderedDict(
                         epoch="{:>10}".format(epoch),
-                        loss="{:.4f}".format(test_loss / n_total)))
+                        loss="{:.4f}".format(test_loss)))
 
+            ### metrics
+            # logger.info('\ncalculate metrics...
             self.metrics.calc_metrics(epoch, mode='test')
+            test_mean_iou = self.metrics.mean_iou
+
+            # if inference:
+
+
             self.metrics.initialize()
+
+        return test_mean_iou
 
 
     def _save_ckpt(self, epoch, loss, mode=None, zfill=4):
@@ -140,3 +148,6 @@ class ObjectDetection(object):
             'optimizer_state_dict': self.optimizer.state_dict(),
             'loss': loss,
         }, ckpt_path)
+
+    def _save_images(self, img_paths, outputs, prefix='train'):
+        pass

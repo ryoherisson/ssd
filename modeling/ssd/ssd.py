@@ -12,6 +12,7 @@ from modeling.ssd.modules.extras import make_extras
 from modeling.ssd.modules.l2norm import L2Norm
 from modeling.ssd.modules.loc_conf import make_loc_conf
 from modeling.ssd.modules.dbox import DBox
+from modeling.ssd.detection import Detect
 
 
 class SSD(nn.Module):
@@ -27,11 +28,13 @@ class SSD(nn.Module):
             cfg['n_classes'], cfg['bbox_aspect_num']
         )
 
-        # make DBox
+        # make DBox: torch.Size([8372, 4])
         dbox = DBox(**cfg)
-        self.dbox_list = dbox.make_dbox_list()
+        self.dbox_list = dbox.make_dbox_list().to(cfg['device'])
 
-    def forward(self, x):
+        self.detect = Detect(variances=cfg['variances'], conf_thresh=cfg['conf_thresh'], top_k=cfg['top_k'], nms_thresh=cfg['nms_thresh'])
+
+    def forward(self, x, phase='train'):
         sources = list() # input for loc and conf
         loc = list() # output for loc
         conf = list() # output for conf
@@ -74,6 +77,13 @@ class SSD(nn.Module):
         conf = conf.view(conf.size(0), -1, self.n_classes)
 
         output = (loc, conf, self.dbox_list)
+
+        if phase == 'test':
+            # Detect forward
+            # outputs: torch.Size([batch_num, 21, 200, 5])
+            # 5: [conf, xmin, ymin, xmax, ymax]
+            detect_outputs = self.detect(loc, conf, self.dbox_list)
+            return output, detect_outputs
 
         return output
         # output: (loc, conf, dbox_list)

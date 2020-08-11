@@ -39,12 +39,12 @@ class DBox(object):
                 mean += [cx, cy, s_k, s_k]
 
                 # large DBox [cx, cy, width, heigh]
-                s_k_prime = self.max_sizes[k] / self.img_size
+                s_k_prime = sqrt(s_k * (self.max_sizes[k] / self.img_size))
                 mean += [cx, cy, s_k_prime, s_k_prime]
 
                 for ar in self.aspect_ratios[k]:
-                    mean += [cx, cy, s_k*sqrt(ar), s_k*sqrt(ar)]
-                    mean += [cx, cy, s_k/sqrt(ar), s_k/sqrt(ar)]
+                    mean += [cx, cy, s_k*sqrt(ar), s_k/sqrt(ar)]
+                    mean += [cx, cy, s_k/sqrt(ar), s_k*sqrt(ar)]
 
         # torch.Size([8372, 4])
         output = torch.Tensor(mean).view(-1, 4)
