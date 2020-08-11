@@ -44,7 +44,8 @@ class ObjectDetection(object):
                     inputs = inputs.to(self.device)
                     targets_device = [annot.to(self.device) for annot in targets]
 
-                    outputs = self.network(inputs)
+                    # outputs = self.network(inputs)
+                    outputs, detect_outputs = self.network(inputs)
 
                     loss_l, loss_c = self.criterion(outputs, targets_device)
                     loss = loss_l + loss_c
@@ -59,10 +60,9 @@ class ObjectDetection(object):
                     train_loss += loss.item()
 
                     ### metrics update
-                    # self.metrics.update(preds=detect_outputs,
-                    #                     targets=targets,
-                    #                     loss=test_loss,
-                    #                     fnames=fnames_)
+                    self.metrics.update(preds=detect_outputs,
+                                        targets=targets,
+                                        loss=train_loss)
 
                     ### logging train loss and accuracy
                     pbar.set_postfix(OrderedDict(
@@ -74,8 +74,11 @@ class ObjectDetection(object):
                 self._save_ckpt(epoch, train_loss/(idx+1))
 
             # logger.info('\ncalculate metrics...')
-            # self.metrics.calc_metrics(epoch, mode='train')
-            # self.metrics.initialize()
+            self.metrics.calc_metrics(epoch, mode='train')
+            self.metrics.initialize()
+
+            ### show images on tensorboard
+            self._show_imgs(img_paths[:2], preds[:2], self.img_size, epoch, prefix='val')
 
             ### test
             logger.info('\n### test:')
@@ -102,7 +105,7 @@ class ObjectDetection(object):
                     inputs = inputs.to(self.device)
                     targets_device = [annot.to(self.device) for annot in targets]
 
-                    outputs, detect_outputs = self.network(inputs, phase='test')
+                    outputs, detect_outputs = self.network(inputs)
 
                     loss_l, loss_c = self.criterion(outputs, targets_device)
                     loss = loss_l + loss_c
@@ -132,14 +135,16 @@ class ObjectDetection(object):
             preds = self.metrics.calc_metrics(epoch, mode='test') 
             test_mean_iou = self.metrics.mean_iou
 
+            ### show images on tensorboard
             self._show_imgs(img_paths[:2], preds[:2], self.img_size, epoch, prefix='val')
+
+            ### save result images
             if inference:
                 self._save_images(img_paths, preds, height_list, width_list)
 
             self.metrics.initialize()
 
         return test_mean_iou
-
 
     def _save_ckpt(self, epoch, loss, mode=None, zfill=4):
         if isinstance(self.network, nn.DataParallel):

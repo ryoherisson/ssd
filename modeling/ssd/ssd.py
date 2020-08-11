@@ -34,7 +34,7 @@ class SSD(nn.Module):
 
         self.detect = Detect(variances=cfg['variances'], conf_thresh=cfg['conf_thresh'], top_k=cfg['top_k'], nms_thresh=cfg['nms_thresh'])
 
-    def forward(self, x, phase='train'):
+    def forward(self, x):
         sources = list() # input for loc and conf
         loc = list() # output for loc
         conf = list() # output for conf
@@ -78,15 +78,11 @@ class SSD(nn.Module):
 
         output = (loc, conf, self.dbox_list)
 
-        if phase == 'test':
-            # Detect forward
-            # outputs: torch.Size([batch_num, 21, 200, 5])
-            # 5: [conf, xmin, ymin, xmax, ymax]
-            detect_outputs = self.detect(loc, conf, self.dbox_list)
-            return output, detect_outputs
-
-        # output: (loc, conf, dbox_list)
-        return output
+        # Detect forward
+        # outputs: torch.Size([batch_num, 21, 200, 5])
+        # 5: [conf, xmin, ymin, xmax, ymax]
+        detect_outputs = self.detect(loc, conf, self.dbox_list)
+        return output, detect_outputs
 
 if __name__ == "__main__":
     ssd_cfg = {
