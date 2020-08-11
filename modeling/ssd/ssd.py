@@ -85,8 +85,8 @@ class SSD(nn.Module):
             detect_outputs = self.detect(loc, conf, self.dbox_list)
             return output, detect_outputs
 
-        return output
         # output: (loc, conf, dbox_list)
+        return output
 
 if __name__ == "__main__":
     ssd_cfg = {

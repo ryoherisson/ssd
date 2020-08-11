@@ -40,6 +40,9 @@ conf_thresh: 0.01
 top_k: 200
 nms_thresh: 0.45
 
+# metric configs
+confidence_level: 0.5
+
 # save_ckpt_interval should not be 0.
 save_ckpt_interval: 50
 

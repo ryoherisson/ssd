@@ -149,6 +149,7 @@ def main():
         'n_classes': configs['n_classes'],
         'classes': configs['classes'],
         'img_size': configs['img_size'],
+        'confidence_level': configs['confidence_level'],
         'writer': writer,
         'metrics_dir': paths.metrics_dir,
         'imgs_dir': paths.img_outdir,
