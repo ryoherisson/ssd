@@ -7,16 +7,17 @@ import torch
 import torch.nn as nn
 from torch.autograd import Function
 
-from modeling.metrics.modules.decode import decode
-from modeling.metrics.modules.non_maximum_suppression import nm_suppression
+from modeling.ssd.modules.decode import decode
+from modeling.ssd.modules.non_maximum_suppression import nm_suppression
 
 class Detect(nn.Module):
-    def __init__(self, conf_thresh=0.01, top_k=200, nms_thresh=0.45):
+    def __init__(self, variances, conf_thresh=0.01, top_k=200, nms_thresh=0.45):
         super(Detect, self).__init__()
         self.softmax = nn.Softmax(dim=-1)
         self.conf_thresh = conf_thresh
         self.top_k = top_k
         self.nms_thresh = nms_thresh
+        self.variances = torch.Tensor(variances)
 
     def forward(self, loc_data, conf_data, dbox_list):
 
@@ -34,7 +35,7 @@ class Detect(nn.Module):
 
         for i in range(n_batch):
 
-            decoded_boxes = decode(loc_data[i], dbox_list)
+            decoded_boxes = decode(loc_data[i], dbox_list, self.variances)
 
             conf_scores = conf_preds[i].clone()
 
@@ -59,7 +60,7 @@ class Detect(nn.Module):
 
                 # 3, Non-Maximum Suppression
                 ids, count = nm_suppression(
-                    boxes, scores, self.nms_thresh, self.top_k)
+                    boxes.detach(), scores.detach(), self.nms_thresh, self.top_k)
                 # ids: index after nm_suppression
                 # count: num of bbox after nm_suppression
                 

@@ -26,7 +26,7 @@ jaccord_thresh: 0.5
 neg_pos: 3
 
 # pretrained path: vgg16 model path or blank
-pretrained: 
+pretrained: ./weights/vgg16_reducedfc.pth
 
 # ssd configs
 bbox_aspect_num: [4, 6, 6, 6, 4, 4]  # number of aspect ratios of dbox
@@ -35,9 +35,13 @@ steps: [8, 16, 32, 64, 100, 300]  # size of dbox
 min_sizes: [30, 60, 111, 162, 213, 264]  # size of dbox
 max_sizes: [60, 111, 162, 213, 264, 315]  # size of dbox
 aspect_ratios: [[2], [2, 3], [2, 3], [2, 3], [2], [2]] # aspect ratios
+variances: [0.1, 0.2] # variances for decode
 conf_thresh: 0.01
 top_k: 200
 nms_thresh: 0.45
+
+# metric configs
+confidence_level: 0.5
 
 # save_ckpt_interval should not be 0.
 save_ckpt_interval: 50
@@ -45,6 +49,13 @@ save_ckpt_interval: 50
 # output dir (logs, results)
 log_dir: ./logs/
 
-# checkpoint path or None
-resume: 
+# checkpoint path or blank
+resume: ./weights/ssd300_mAP_77.43_v2.pth
 # e.g) resume: ./logs/2020-07-26T00:19:34.918002/ckpt/best_acc_ckpt.pth
+
+# visualize label color_map
+label_color_map: ['#e6194b', '#3cb44b', '#ffe119', '#0082c8', '#f58231', '#911eb4', '#46f0f0', '#f032e6',
+                   '#d2f53c', '#fabebe', '#008080', '#000080', '#aa6e28', '#fffac8', '#800000', '#aaffc3', '#808000',
+                   '#ffd8b1', '#e6beff', '#808080', '#FFFFFF']
+# font should be downloaded manually
+font_path: ./font/calibril.ttf
