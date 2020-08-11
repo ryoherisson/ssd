@@ -55,11 +55,9 @@ class ObjectDetection(object):
                     train_loss += loss.item()
 
                     ### metrics update
-                    # self.metrics.update(loc=outputs[0].cpu().detach().clone(),
-                    #                     conf=outputs[1].cpu().detach().clone(),
-                    #                     dbox_list=outputs[2].cpu().detach().clone(),
+                    # self.metrics.update(preds=detect_outputs,
                     #                     targets=targets,
-                    #                     loss=train_loss,
+                    #                     loss=test_loss,
                     #                     fnames=fnames_)
 
                     ### logging train loss and accuracy
@@ -118,7 +116,7 @@ class ObjectDetection(object):
                         loss="{:.4f}".format(test_loss)))
 
             ### metrics
-            # logger.info('\ncalculate metrics...
+            logger.info('\ncalculate metrics...')
             self.metrics.calc_metrics(epoch, mode='test')
             test_mean_iou = self.metrics.mean_iou
 

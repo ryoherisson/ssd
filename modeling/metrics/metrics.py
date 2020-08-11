@@ -20,6 +20,7 @@ class Metrics(object):
         self.writer = metric_cfg['writer']
         self.metrics_dir = metric_cfg['metrics_dir']
         self.imgs_dir = metric_cfg['imgs_dir']
+        self.confidence_level = metric_cfg['confidence_level']
 
         # initialize output list, intersection, union, iou and mean_iou
         self.initialize()
@@ -84,7 +85,9 @@ class Metrics(object):
                 # preds
                 # background label is 0, so p_label = label + 1
                 p_label = label + 1
-                for k in range(200):
+                find_index = (preds[idx][p_label][:, 0] >= self.confidence_level).nonzero().squeeze(1)
+
+                for k in find_index:
                     xmin = (preds[idx][p_label][k][1] * self.img_size).long()
                     ymin = (preds[idx][p_label][k][2] * self.img_size).long()
                     xmax = (preds[idx][p_label][k][3] * self.img_size).long()
