@@ -3,9 +3,11 @@ from tqdm import tqdm
 from logging import getLogger
 from collections import OrderedDict
 
+import numpy as np
+
 import torch
 import torch.nn as nn
-import torchvision
+from torchvision import transforms
 
 logger = getLogger(__name__)
 
@@ -18,6 +20,8 @@ class ObjectDetection(object):
         self.criterion = kwargs['criterion']
         self.train_loader, self.test_loader = kwargs['data_loaders']
         self.metrics = kwargs['metrics']
+        self.box_vis = kwargs['box_vis']
+        self.img_size = kwargs['img_size']
         self.writer = kwargs['writer']
         self.save_ckpt_interval = kwargs['save_ckpt_interval']
         self.ckpt_dir = kwargs['ckpt_dir']
@@ -34,10 +38,9 @@ class ObjectDetection(object):
             self.network.train()
 
             train_loss = 0
-            n_total = 0
 
             with tqdm(self.train_loader, ncols=100) as pbar:
-                for idx, (inputs, targets, heights_, widths_, fnames_) in enumerate(pbar):
+                for idx, (inputs, targets, heights_, widths_, img_paths_) in enumerate(pbar):
                     inputs = inputs.to(self.device)
                     targets_device = [annot.to(self.device) for annot in targets]
 
@@ -55,46 +58,51 @@ class ObjectDetection(object):
 
                     train_loss += loss.item()
 
-                    n_total += len(targets)
-
                     ### metrics update
-                    # self.metrics.update(loc=outputs[0].cpu().detach().clone(),
-                    #                     conf=outputs[1].cpu().detach().clone(),
-                    #                     dbox_list=outputs[2].cpu().detach().clone(),
+                    # self.metrics.update(preds=detect_outputs,
                     #                     targets=targets,
-                    #                     loss=train_loss / n_total,
+                    #                     loss=test_loss,
                     #                     fnames=fnames_)
 
                     ### logging train loss and accuracy
                     pbar.set_postfix(OrderedDict(
                         epoch="{:>10}".format(epoch),
-                        loss="{:.4f}".format(train_loss / n_total)))
+                        loss="{:.4f}".format(train_loss)))
 
             if epoch % self.save_ckpt_interval == 0:
-                logger.info('saving checkpoing...')
+                logger.info('\nsaving checkpoint...')
                 self._save_ckpt(epoch, train_loss/(idx+1))
 
+            # logger.info('\ncalculate metrics...')
             # self.metrics.calc_metrics(epoch, mode='train')
             # self.metrics.initialize()
 
             ### test
-            logger.info('### test:')
-            self.test(epoch)
+            logger.info('\n### test:')
+            test_mean_iou = self.test(epoch)
+
+            if test_mean_iou > best_test_iou:
+                logger.info(f'\nsaving best checkpoint (epoch: {epoch})...')
+                best_test_iou = test_mean_iou
+                self._save_ckpt(epoch, train_loss/(idx+1), mode='best')
+
 
     def test(self, epoch, inference=False):
         self.network.eval()
 
         test_loss = 0
-        n_total = 0
+        height_list = []
+        width_list = []
+        img_path_list = []
 
         with torch.no_grad():
             with tqdm(self.test_loader, ncols=100) as pbar:
-                for idx, (inputs, targets, heights_, widths_, fnames_) in enumerate(pbar):
+                for idx, (inputs, targets, heights, widths, img_paths) in enumerate(pbar):
 
                     inputs = inputs.to(self.device)
                     targets_device = [annot.to(self.device) for annot in targets]
 
-                    outputs = self.network(inputs)
+                    outputs, detect_outputs = self.network(inputs, phase='test')
 
                     loss_l, loss_c = self.criterion(outputs, targets_device)
                     loss = loss_l + loss_c
@@ -103,23 +111,34 @@ class ObjectDetection(object):
 
                     test_loss += loss.item()
 
-                    n_total += len(targets)
+                    height_list.extend(heights)
+                    width_list.extend(widths)
+                    img_path_list.extend(img_paths)
 
                     ### metrics update
-                    self.metrics.update(loc=outputs[0].cpu().detach().clone(),
-                                        conf=outputs[1].cpu().detach().clone(),
-                                        dbox_list=outputs[2].cpu().detach().clone(),
+                    self.metrics.update(preds=detect_outputs,
                                         targets=targets,
-                                        loss=test_loss / n_total,
-                                        fnames=fnames_)
+                                        loss=test_loss)
 
                     ### logging test loss and accuracy
                     pbar.set_postfix(OrderedDict(
                         epoch="{:>10}".format(epoch),
-                        loss="{:.4f}".format(test_loss / n_total)))
+                        loss="{:.4f}".format(test_loss)))
 
-            self.metrics.calc_metrics(epoch, mode='test')
+            ### metrics
+            logger.info('\ncalculate metrics...')
+            # preds: [n_imgs, n_classes, top_k, 5]
+            # 5: [class_conf, xmin, ymin, xmax, ymax]
+            preds = self.metrics.calc_metrics(epoch, mode='test') 
+            test_mean_iou = self.metrics.mean_iou
+
+            self._show_imgs(img_paths[:2], preds[:2], self.img_size, epoch, prefix='val')
+            if inference:
+                self._save_images(img_paths, preds, height_list, width_list)
+
             self.metrics.initialize()
+
+        return test_mean_iou
 
 
     def _save_ckpt(self, epoch, loss, mode=None, zfill=4):
@@ -140,3 +159,50 @@ class ObjectDetection(object):
             'optimizer_state_dict': self.optimizer.state_dict(),
             'loss': loss,
         }, ckpt_path)
+
+    def _show_imgs(self, img_paths, preds, img_size, epoch, prefix='train'):
+        """Show result image on Tensorboard
+
+        Parameters
+        ----------
+        img_paths : list
+            original image path
+        preds : tensor
+            [1, 21, 200, 5] ([mini-batch, n_classes, [class_conf, xmin, ymin, xmax, ymax]])
+        img_size : int
+            show img size
+        prefix : str, optional
+            'train' or 'test', by default 'train'
+        """
+
+        for i, img_path in enumerate(img_paths):
+            pred = preds[i][1:]
+            annotated_img = self.box_vis.draw_box(img_path, pred, img_size, img_size)
+            annotated_img = transforms.functional.to_tensor(annotated_img)
+            self.writer.add_image(f'{prefix}/results_{i}', annotated_img, epoch)
+
+    def _save_images(self, img_paths, preds, height_list, width_list):
+        """Save Image
+
+        Parameters
+        ----------
+        img_paths : list
+            original image paths
+        preds : tensor
+            [1, 21, 200, 5] ([mini-batch, n_classes, [class_conf, xmin, ymin, xmax, ymax]])
+        height_list : list
+            original height list
+        width_list : list
+            original width list
+        """
+
+        for i, img_path in enumerate(img_paths):
+            # preds[i] has background label 0, so exclude background class
+            pred = preds[i][1:]
+            height = height_list[i]
+            width = width_list[i]
+
+            annotated_img = self.box_vis.draw_box(img_path, pred, width, height)
+
+            outpath = self.img_outdir / img_path.name
+            self.box_vis.save_img(annotated_img, outpath)

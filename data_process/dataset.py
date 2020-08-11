@@ -140,17 +140,14 @@ class VOCDataset(data.Dataset):
         return len(self.img_list)
 
     def __getitem__(self, index):
-        im, gt, h, w, fname = self.pull_item(index)
-        return im, gt, h, w, fname
+        im, gt, h, w, img_path = self.pull_item(index)
+        return im, gt, h, w, img_path
 
     def pull_item(self, index):
         # read img
         img_path = self.img_list[index]
         img = cv2.imread(img_path) # [height][width][BGR]
         height, width, channels = img.shape
-
-        # filename
-        fname = Path(img_path).name
 
         # create a list of annot info
         annot_path = self.annot_list[index]
@@ -168,7 +165,7 @@ class VOCDataset(data.Dataset):
         # np.array of BBoxes and label
         gt = np.hstack((boxes, np.expand_dims(labels, axis=1)))
 
-        return img, gt, height, width, fname
+        return img, gt, height, width, Path(img_path)
 
 
 def od_collate_fn(batch):

@@ -9,8 +9,6 @@ import pandas as pd
 
 import torch
 
-from modeling.metrics.detect import Detect
-
 logger = getLogger(__name__)
 pd.set_option('display.unicode.east_asian_width', True)
 
@@ -22,89 +20,92 @@ class Metrics(object):
         self.writer = metric_cfg['writer']
         self.metrics_dir = metric_cfg['metrics_dir']
         self.imgs_dir = metric_cfg['imgs_dir']
+        self.confidence_level = metric_cfg['confidence_level']
 
         # initialize output list, intersection, union, iou and mean_iou
         self.initialize()
 
         self.loss = 0
 
-        self.conf_thresh = metric_cfg['conf_thresh']
-        self.top_k = metric_cfg['top_k']
-        self.nms_thresh = metric_cfg['nms_thresh']
-        self.detect = Detect(conf_thresh=self.conf_thresh, top_k=self.top_k, nms_thresh=self.nms_thresh)
-
     def initialize(self):
-        self.output_list = []
+        # detect output list
+        self.preds_list = []
+        # target list
+        self.targets = []
 
         # intersection for iou : torch.Size([n_classes])
-        self.intersection = torch.zeros(self.n_classes, dtype=torch.long)
+        self.intersection = torch.zeros(self.n_classes-1, dtype=torch.long)
         # union for iou : torch.Size([n_classes])
-        self.union = torch.zeros(self.n_classes, dtype=torch.long)
+        self.union = torch.zeros(self.n_classes-1, dtype=torch.long)
         # iou
         self.ious = 0
         # mean iou
         self.mean_iou = 0
 
-    def update(self, loc, conf, dbox_list, targets, loss, fnames):
-        # preds: (loc, conf, dbox_list)
+    def update(self, preds, targets, loss):
+        # preds: [1, 21, 200, 5] ([mini-batch, n_classes, [class_conf, xmin, ymin, xmax, ymax]])
         # targets: [mini-batch, n_elem, [xmin, ymin, xmax, ymax, class_index]]
         # loss: loss
         # fnames: filenames
 
-        # Detect forward
-        # outputs: torch.Size([batch_num, 21, 200, 5])
-        outputs = self.detect(loc, conf, dbox_list)
-        self.output_list.append(outputs)
+        self.preds_list.append(preds)
+        self.loss = loss
+        self.targets.extend(targets)
 
-        # mini-batch size
-        n_batch = outputs.size(0) 
+    def calc_metrics(self, epoch, mode='train'):
+
+        preds = torch.cat([o for o in self.preds_list], 0)
+        
+        # input data size
+        num_inputs = preds.size(0)
     
-        for idx in range(n_batch):
+        for idx in range(num_inputs):
 
-            for label in range(0, self.n_classes):
+            # self.n_classes-1: exclude background
+            for label in range(0, self.n_classes-1):
 
                 # compare target_tensor and output_tensor
-                target_tensor = torch.zeros(self.img_size, self.img_size, dtype=torch.long)
-                output_tensor = torch.zeros(self.img_size, self.img_size, dtype=torch.long)
+                target_tensor = torch.zeros(self.img_size, self.img_size, dtype=torch.long) + self.n_classes
+                pred_tensor = torch.zeros(self.img_size, self.img_size, dtype=torch.long) + self.n_classes
 
                 # targets indices same label
-                target_indices = (targets[idx][:, -1] == label).nonzero().squeeze(1)
+                target_indices = (self.targets[idx][:, -1] == label).nonzero().squeeze(1)
 
                 for t_i in target_indices:
-                    xmin = (targets[idx][t_i][0] * self.img_size).long()
-                    ymin = (targets[idx][t_i][1] * self.img_size).long()
-                    xmax = (targets[idx][t_i][2] * self.img_size).long()
-                    ymax = (targets[idx][t_i][3] * self.img_size).long()
+                    xmin = (self.targets[idx][t_i][0] * self.img_size).long()
+                    ymin = (self.targets[idx][t_i][1] * self.img_size).long()
+                    xmax = (self.targets[idx][t_i][2] * self.img_size).long()
+                    ymax = (self.targets[idx][t_i][3] * self.img_size).long()
 
                     target_tensor[ymin:ymax, xmin:xmax] = label
 
-                # outputs
-                for k in range(self.top_k):
-                    xmin = (outputs[idx][label][k][0] * self.img_size).long()
-                    ymin = (outputs[idx][label][k][0] * self.img_size).long()
-                    xmax = (outputs[idx][label][k][0] * self.img_size).long()
-                    ymax = (outputs[idx][label][k][0] * self.img_size).long()
+                # preds
+                # background label is 0, so p_label = label + 1
+                p_label = label + 1
+                find_index = (preds[idx][p_label][:, 0] >= self.confidence_level).nonzero().squeeze(1)
 
-                    output_tensor[ymin:ymax, xmin:xmax] = label
+                for k in find_index:
+                    xmin = (preds[idx][p_label][k][1] * self.img_size).long()
+                    ymin = (preds[idx][p_label][k][2] * self.img_size).long()
+                    xmax = (preds[idx][p_label][k][3] * self.img_size).long()
+                    ymax = (preds[idx][p_label][k][4] * self.img_size).long()
 
-                self.intersection[label] += torch.sum((target_tensor == label) & (output_tensor == label)).long()
-                self.union[label] += torch.sum((target_tensor == label) | (output_tensor == label)).long()
+                    pred_tensor[ymin:ymax, xmin:xmax] = p_label
 
-    def calc_metrics(self, epoch, mode='train'):
+                self.intersection[label] += torch.sum((target_tensor == label) & (pred_tensor == p_label)).long()
+                self.union[label] += torch.sum((target_tensor == label) | (pred_tensor == p_label)).long()
+
         self.iou()
         self.logging(epoch, mode)
         self.save_csv(epoch, mode)
 
+        return preds
+
     def iou(self):
         # to avoid inf when union is 0
-
         # self.union += 1e-9
         self.union = self.union.float() + 1e-9
         self.intersection = self.intersection.float()
-
-        # exclude background
-        self.union = self.union[1:]
-        self.intersection = self.intersection[1:]
 
         # calc ious
         self.ious = self.intersection / self.union
