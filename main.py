@@ -16,6 +16,7 @@ from torchsummary import summary
 
 from utils.path_process import Paths
 from utils.setup_logger import setup_logger
+from utils.vis_img import BoxVis
 from data_process.data_path_process import make_datapath_list
 from data_process.dataset import Anno_xml2list, DataTransform
 from data_process.dataset import VOCDataset
@@ -157,6 +158,9 @@ def main():
     
     metrics = Metrics(**metrics_cfg)
 
+    ### Visualize Results ###
+    box_vis = BoxVis(configs['confidence_level'], configs['classes'], configs['label_color_map'])
+
     ### Train or Inference ###
     kwargs = {
         'device': device,
@@ -165,6 +169,8 @@ def main():
         'criterion': criterion,
         'data_loaders': (train_loader, test_loader),
         'metrics': metrics,
+        'box_vis': box_vis,
+        'img_size': configs['img_size'],
         'writer': writer,
         'save_ckpt_interval': configs['save_ckpt_interval'],
         'ckpt_dir': paths.ckpt_dir,

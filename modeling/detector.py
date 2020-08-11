@@ -18,6 +18,8 @@ class ObjectDetection(object):
         self.criterion = kwargs['criterion']
         self.train_loader, self.test_loader = kwargs['data_loaders']
         self.metrics = kwargs['metrics']
+        self.box_vis = kwargs['box_vis']
+        self.img_size = kwargs['img_size']
         self.writer = kwargs['writer']
         self.save_ckpt_interval = kwargs['save_ckpt_interval']
         self.ckpt_dir = kwargs['ckpt_dir']
@@ -36,7 +38,7 @@ class ObjectDetection(object):
             train_loss = 0
 
             with tqdm(self.train_loader, ncols=100) as pbar:
-                for idx, (inputs, targets, heights_, widths_, fnames_) in enumerate(pbar):
+                for idx, (inputs, targets, heights_, widths_, img_paths_) in enumerate(pbar):
                     inputs = inputs.to(self.device)
                     targets_device = [annot.to(self.device) for annot in targets]
 
@@ -87,10 +89,13 @@ class ObjectDetection(object):
         self.network.eval()
 
         test_loss = 0
+        height_list = []
+        width_list = []
+        img_path_list = []
 
         with torch.no_grad():
             with tqdm(self.test_loader, ncols=100) as pbar:
-                for idx, (inputs, targets, heights_, widths_, fnames_) in enumerate(pbar):
+                for idx, (inputs, targets, heights, widths, img_paths) in enumerate(pbar):
 
                     inputs = inputs.to(self.device)
                     targets_device = [annot.to(self.device) for annot in targets]
@@ -104,11 +109,14 @@ class ObjectDetection(object):
 
                     test_loss += loss.item()
 
+                    height_list.extend(heights)
+                    width_list.extend(widths)
+                    img_path_list.extend(img_paths)
+
                     ### metrics update
                     self.metrics.update(preds=detect_outputs,
                                         targets=targets,
-                                        loss=test_loss,
-                                        fnames=fnames_)
+                                        loss=test_loss)
 
                     ### logging test loss and accuracy
                     pbar.set_postfix(OrderedDict(
@@ -117,11 +125,13 @@ class ObjectDetection(object):
 
             ### metrics
             logger.info('\ncalculate metrics...')
-            self.metrics.calc_metrics(epoch, mode='test')
+            # preds: [n_imgs, n_classes, top_k, 5]
+            # 5: [class_conf, xmin, ymin, xmax, ymax]
+            preds = self.metrics.calc_metrics(epoch, mode='test') 
             test_mean_iou = self.metrics.mean_iou
 
-            # if inference:
-
+            if inference:
+                self._save_images(img_paths, preds, height_list, width_list)
 
             self.metrics.initialize()
 
@@ -147,5 +157,47 @@ class ObjectDetection(object):
             'loss': loss,
         }, ckpt_path)
 
-    def _save_images(self, img_paths, outputs, prefix='train'):
+    def _show_imgs(self, img_paths, preds, img_size, prefix='train'):
+        """Show result image on Tensorboard
+
+        Parameters
+        ----------
+        img_paths : list
+            original image path
+        preds : tensor
+            [1, 21, 200, 5] ([mini-batch, n_classes, [class_conf, xmin, ymin, xmax, ymax]])
+        img_size : int
+            show img size
+        prefix : str, optional
+            'train' or 'test', by default 'train'
+        """
+        
+
+
         pass
+
+    def _save_images(self, img_paths, preds, height_list, width_list):
+        """Save Image
+
+        Parameters
+        ----------
+        img_paths : list
+            original image paths
+        preds : tensor
+            [1, 21, 200, 5] ([mini-batch, n_classes, [class_conf, xmin, ymin, xmax, ymax]])
+        height_list : list
+            original height list
+        width_list : list
+            original width list
+        """
+
+        for i, img_path in enumerate(img_paths):
+            # preds[i] has background label 0, so exclude background class
+            pred = preds[i][1:]
+            height = height_list[i]
+            width = width_list[i]
+
+            annotated_img = self.box_vis.draw_box(img_path, pred, height, width)
+
+            outpath = self.img_outdir / img_path.name
+            self.box_vis.save_img(annotated_img, outpath)

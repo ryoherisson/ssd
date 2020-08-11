@@ -5,3 +5,4 @@ logs
 *.xml
 dataset
 weights
+font
