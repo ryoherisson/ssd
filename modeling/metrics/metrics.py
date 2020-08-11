@@ -32,8 +32,6 @@ class Metrics(object):
         self.preds_list = []
         # target list
         self.targets = []
-        # filename list
-        self.fnames = []
 
         # intersection for iou : torch.Size([n_classes])
         self.intersection = torch.zeros(self.n_classes-1, dtype=torch.long)
@@ -44,7 +42,7 @@ class Metrics(object):
         # mean iou
         self.mean_iou = 0
 
-    def update(self, preds, targets, loss, fnames):
+    def update(self, preds, targets, loss):
         # preds: [1, 21, 200, 5] ([mini-batch, n_classes, [class_conf, xmin, ymin, xmax, ymax]])
         # targets: [mini-batch, n_elem, [xmin, ymin, xmax, ymax, class_index]]
         # loss: loss
@@ -53,12 +51,11 @@ class Metrics(object):
         self.preds_list.append(preds)
         self.loss = loss
         self.targets.extend(targets)
-        self.fnames.extend(fnames)
 
     def calc_metrics(self, epoch, mode='train'):
 
         preds = torch.cat([o for o in self.preds_list], 0)
-
+        
         # input data size
         num_inputs = preds.size(0)
     
@@ -101,6 +98,8 @@ class Metrics(object):
         self.iou()
         self.logging(epoch, mode)
         self.save_csv(epoch, mode)
+
+        return preds
 
     def iou(self):
         # to avoid inf when union is 0

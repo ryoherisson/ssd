@@ -50,5 +50,10 @@ save_ckpt_interval: 50
 log_dir: ./logs/
 
 # checkpoint path or blank
-resume: /home/rizawa/Codes/playing/ML/SSD/weights/ssd300_50.pth
+resume: ./weights/ssd300_mAP_77.43_v2.pth
 # e.g) resume: ./logs/2020-07-26T00:19:34.918002/ckpt/best_acc_ckpt.pth
+
+# visualize label color_map
+label_color_map: ['#e6194b', '#3cb44b', '#ffe119', '#0082c8', '#f58231', '#911eb4', '#46f0f0', '#f032e6',
+                   '#d2f53c', '#fabebe', '#008080', '#000080', '#aa6e28', '#fffac8', '#800000', '#aaffc3', '#808000',
+                   '#ffd8b1', '#e6beff', '#808080', '#FFFFFF']
