@@ -139,4 +139,4 @@ class Metrics(object):
 
         with open(csv_path, 'a') as logfile:
             logwriter = csv.writer(logfile, delimiter=',')
-            logwriter.writerow([epoch, self.loss, self.mean_iou])
+            logwriter.writerow([epoch, self.loss, self.mean_iou.item()])
