@@ -16,7 +16,7 @@ class MultiBoxLoss(nn.Module):
         super(MultiBoxLoss, self).__init__()
         self.jaccard_thresh = jaccard_thresh  # 0.5 jaccard's coef threshold
         self.negpos_ratio = neg_pos  # 3:1 ratio of Hard Negative Mining neg:pos
-        self.device = device 
+        self.device = device
 
     def forward(self, predictions, targets):
         """
@@ -90,7 +90,7 @@ class MultiBoxLoss(nn.Module):
             batch_conf, conf_t_label.view(-1), reduction='none')
 
         # -----------------
-        # Hard Negative Miningで
+        # Hard Negative Mining
         # -----------------
 
         num_pos = pos_mask.long().sum(1, keepdim=True)
