@@ -1,17 +1,18 @@
 from PIL import Image, ImageDraw, ImageFont
 
 class BoxVis(object):
-    def __init__(self, confidence_level, classes, label_color_map):
+    def __init__(self, confidence_level, classes, label_color_map, font_path):
         self.confidence_level = confidence_level
         self.classes = classes
         self.label_color_map = {k: label_color_map[i] for i, k in enumerate(self.classes)}
+        self.font_path = font_path
 
     def draw_box(self, img_path, pred, width, height):
         
         img = Image.open(img_path)
         annotated_img = img
         draw = ImageDraw.Draw(annotated_img)
-        # font = ImageFont.truetype(font="./font/calibril.ttf", size=15)
+        # font = ImageFont.truetype(font=self.font_path, size=15)
 
         # background in pred(whose index was 0) already excluded
         for l_i, label in enumerate(self.classes):
