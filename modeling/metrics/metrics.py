@@ -102,14 +102,16 @@ class Metrics(object):
         return preds
 
     def iou(self):
-        # to avoid inf when union is 0
-        # self.union += 1e-9
-        self.union = self.union.float() + 1e-9
+        # If union is 0, set nan to ignore them
+        zero_idx= (self.union == 0).nonzero()
+        self.union = self.union.float()
+        self.union[zero_idx] = float('nan')
+
         self.intersection = self.intersection.float()
 
         # calc ious
         self.ious = self.intersection / self.union
-        self.mean_iou = self.ious.mean()
+        self.mean_iou = self.ious[~torch.isnan(self.ious)].mean()
 
     def logging(self, epoch, mode):
         logger.info(f'{mode} metrics...')
