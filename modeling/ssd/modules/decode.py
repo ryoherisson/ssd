@@ -34,6 +34,7 @@ def decode(loc, dbox_list, variances):
     #     dbox_list[:, 2:] * torch.exp(loc[:, 2:] * 0.2)), dim=1)
 
     boxes[:, :2] -= boxes[:, 2:] / 2 # (xcenter, ycenter, width, height) -> (xmin, ymin, width, height)
+    boxes[:, :2] = torch.clamp(boxes[:, :2], min=0.0) # minimum xmin and ymin should be 0.0
     boxes[:, 2:] += boxes[:, :2]     # (xmin, ymin, width, height) -> (xmin, ymin, xmax, ymax)
 
     return boxes
