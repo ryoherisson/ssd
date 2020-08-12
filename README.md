@@ -1,7 +1,5 @@
 # SSD: Single Shot MultiBox Object Detecto in pytorch
 This is a pytorch implementation of  Single Shot MultiBox Object Detector.
-Cifar10 is available for the dataset by default.
-You can also use your own dataset.
 
 ## Requirements
 ```bash
