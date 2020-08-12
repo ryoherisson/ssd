@@ -36,7 +36,7 @@ test_txt: val.txt
 # ----------------
 lr: 0.0001
 decay: 1e-4
-n_gpus: 1
+n_gpus: 1 # currently works with only one gpu
 batch_size: 64
 n_epochs: 50
 jaccord_thresh: 0.5
