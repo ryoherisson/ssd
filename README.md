@@ -1,5 +1,10 @@
 # SSD: Single Shot MultiBox Object Detecto in pytorch
-This is a pytorch implementation of  Single Shot MultiBox Object Detector.
+This is a pytorch implementation of  Single Shot MultiBox Object Detector.  
+
+(Reference)  
+https://github.com/amdegroot/ssd.pytorch  
+https://github.com/YutaroOgawa/pytorch_advanced/tree/master/2_objectdetection  
+https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection
 
 ## Requirements
 ```bash
