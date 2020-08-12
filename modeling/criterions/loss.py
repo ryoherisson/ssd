@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.match import match
+from modeling.criterions.functions.match import match
 
 class MultiBoxLoss(nn.Module):
     """Loss for SSD"""
