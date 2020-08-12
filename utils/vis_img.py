@@ -17,15 +17,16 @@ class BoxVis(object):
     def draw_box(self, img_path, pred, width, height):
         
         img = Image.open(img_path)
-        annotated_img = img
+        annotated_img = img.resize((width, height))
         draw = ImageDraw.Draw(annotated_img)
-        # font = ImageFont.truetype(font=self.font_path, size=15)
+        font = ImageFont.truetype(font=self.font_path, size=15)
 
         # background in pred(whose index was 0) already excluded
         for l_i, label in enumerate(self.classes):
             find_index = (pred[l_i][:, 0] >= self.confidence_level).nonzero().squeeze(1)
             
             for k in find_index:
+                conf = pred[l_i][k][0].item()
                 xmin = (pred[l_i][k][1] * width).long()
                 ymin = (pred[l_i][k][2] * height).long()
                 xmax = (pred[l_i][k][3] * width).long()
@@ -37,11 +38,12 @@ class BoxVis(object):
                 draw.rectangle(xy=[l + 1. for l in box_location], outline=self.label_color_map[label])
 
                 # Text
-                # text_size = font.getsize(self.classes[l_i].upper())
-                # text_location = [box_location[0] + 2., box_location[1] - text_size[1]]
-                # textbox_location = [box_location[0], box_location[1] - text_size[1], box_location[0] + text_size[0] + 4., box_location[1]]
-                # draw.rectangle(xy=textbox_location, fill=self.label_color_map[label])
-                # draw.text(xy=text_location, text=label.upper(), fill='white', font=font)
+                text = "{}:{:.2f}".format(self.classes[l_i], conf)
+                text_size = font.getsize(text.upper())
+                text_location = [box_location[0] + 2., box_location[1] - text_size[1]]
+                textbox_location = [box_location[0], box_location[1] - text_size[1], box_location[0] + text_size[0] + 4., box_location[1]]
+                draw.rectangle(xy=textbox_location, fill=self.label_color_map[label])
+                draw.text(xy=text_location, text=text.upper(), fill='white', font=font)
         
         del draw
 

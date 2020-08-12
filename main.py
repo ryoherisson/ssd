@@ -99,7 +99,7 @@ def main():
     network = SSD(**ssd_cfg)
     network = network.to(device)
     criterion = MultiBoxLoss(jaccard_thresh=configs['jaccord_thresh'], neg_pos=configs['neg_pos'], device=device)
-    optimizer = optim.Adam(network.parameters(), lr=configs['lr'])
+    optimizer = optim.SGD(network.parameters(), lr=configs['lr'], weight_decay=configs['decay'])
 
     def weights_init(m):
         if isinstance(m, nn.Conv2d):

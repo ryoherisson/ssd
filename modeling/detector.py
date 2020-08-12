@@ -40,7 +40,7 @@ class ObjectDetection(object):
             train_loss = 0
 
             with tqdm(self.train_loader, ncols=100) as pbar:
-                for idx, (inputs, targets, heights_, widths_, img_paths) in enumerate(pbar):
+                for idx, (inputs, targets, heights_, widths_, img_paths_) in enumerate(pbar):
                     inputs = inputs.to(self.device)
                     targets_device = [annot.to(self.device) for annot in targets]
 
@@ -74,11 +74,11 @@ class ObjectDetection(object):
                 self._save_ckpt(epoch, train_loss/(idx+1))
 
             # logger.info('\ncalculate metrics...')
-            preds = self.metrics.calc_metrics(epoch, mode='train')
-            self.metrics.initialize()
+            # preds: [n_imgs, n_classes, top_k, 5]
+            # 5: [class_conf, xmin, ymin, xmax, ymax]
+            _ = self.metrics.calc_metrics(epoch, mode='train')
 
-            ### show images on tensorboard
-            self._show_imgs(img_paths[:2], preds[:2], self.img_size, epoch, prefix='train')
+            self.metrics.initialize()
 
             ### test
             logger.info('\n### test:')
@@ -136,11 +136,12 @@ class ObjectDetection(object):
             test_mean_iou = self.metrics.mean_iou
 
             ### show images on tensorboard
-            self._show_imgs(img_paths[:2], preds[:2], self.img_size, epoch, prefix='val')
+            self._show_imgs(img_path_list[:2], preds[:2], self.img_size, epoch, prefix='val')
 
             ### save result images
             if inference:
-                self._save_images(img_paths, preds, height_list, width_list)
+                logger.info('\saving images...')
+                self._save_images(img_path_list, preds, height_list, width_list)
 
             self.metrics.initialize()
 

@@ -81,7 +81,7 @@ class SSD(nn.Module):
         # Detect forward
         # outputs: torch.Size([batch_num, 21, 200, 5])
         # 5: [conf, xmin, ymin, xmax, ymax]
-        detect_outputs = self.detect(loc, conf, self.dbox_list)
+        detect_outputs = self.detect(loc.detach(), conf.detach(), self.dbox_list.detach())
         return output, detect_outputs
 
 if __name__ == "__main__":

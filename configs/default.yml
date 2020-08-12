@@ -18,7 +18,7 @@ test_txt: val.txt
 # train parameters
 # ----------------
 lr: 0.0001
-decay: 1e-4
+decay: 0.0001
 n_gpus: 1
 batch_size: 64
 n_epochs: 50

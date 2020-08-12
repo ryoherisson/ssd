@@ -95,13 +95,13 @@ class Metrics(object):
                 self.intersection[label] += torch.sum((target_tensor == label) & (pred_tensor == p_label)).long()
                 self.union[label] += torch.sum((target_tensor == label) | (pred_tensor == p_label)).long()
 
-        self.iou()
+        self.calc_iou()
         self.logging(epoch, mode)
         self.save_csv(epoch, mode)
 
         return preds
 
-    def iou(self):
+    def calc_iou(self):
         # If union is 0, set nan to ignore them
         zero_idx= (self.union == 0).nonzero()
         self.union = self.union.float()
