@@ -78,7 +78,7 @@ class ObjectDetection(object):
             self.metrics.initialize()
 
             ### show images on tensorboard
-            self._show_imgs(img_paths[:2], preds[:2], self.img_size, epoch, prefix='val')
+            self._show_imgs(img_paths[:2], preds[:2], self.img_size, epoch, prefix='train')
 
             ### test
             logger.info('\n### test:')
