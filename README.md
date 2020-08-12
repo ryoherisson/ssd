@@ -158,4 +158,4 @@ epoch, train loss, train mean iou
 0,3.8158764839172363,0.2572
 1,3.4702939987182617,0.1169
 ```
-You will loss and mean iou during training and as a result of inference.
+You can monitor loss, iou per class and mean iou in the logfile during training.
