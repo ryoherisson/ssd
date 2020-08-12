@@ -9,7 +9,7 @@ audioread==2.1.8
 Babel==2.7.0
 backcall==0.1.0
 beautifulsoup4==4.8.0
-bleach==3.1.0
+bleach==3.1.4
 boto3==1.9.224
 botocore==1.12.224
 certifi==2019.6.16
@@ -109,7 +109,7 @@ progressbar==2.5
 prometheus-client==0.7.1
 prompt-toolkit==2.0.9
 protobuf==3.9.1
-psutil==5.6.3
+psutil==5.6.6
 ptyprocess==0.6.0
 py==1.8.0
 pybind11==2.3.0

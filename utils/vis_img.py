@@ -1,3 +1,10 @@
+"""
+Reference: 
+    MIT License
+    Copyright (c) 2019 Sagar Vinodababu
+"""
+
+
 from PIL import Image, ImageDraw, ImageFont
 
 class BoxVis(object):
