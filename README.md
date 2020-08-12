@@ -120,7 +120,7 @@ $ python main.py --config ./configs/default.yaml --inference
 ```bash
 tensorboard --logdir={log_dir} --port={your port}
 ```
-![tensorboard](docs/images/tensorboard.jpg)
+![tensorboard](docs/images/tensorboard.png)
 
 ## Output
 You will see the following output in the log directory specified in the Config file.
