@@ -75,7 +75,7 @@ def main():
 
     ### DataLoader ###
     train_loader = DataLoader(train_dataset, batch_size=configs['batch_size'], shuffle=True, collate_fn=od_collate_fn)
-    test_loader = DataLoader(test_dataset, batch_size=configs['batch_size'], shuffle=True, collate_fn=od_collate_fn)
+    test_loader = DataLoader(test_dataset, batch_size=configs['batch_size'], shuffle=False, collate_fn=od_collate_fn)
 
     ### Network ###
     logger.info('preparing network...')
