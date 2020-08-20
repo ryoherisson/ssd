@@ -92,8 +92,8 @@ datasets/
 │   ├── fuga.jpg
 │   ├── foo.jpg
 │   └── bar.jpg
-├── train.csv
-└── test.csv
+├── train.txt
+└── test.txt
 ```
 
 The content of the txt file should have the following structure.
